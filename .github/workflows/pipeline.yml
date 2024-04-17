@@ -84,7 +84,7 @@ jobs:
         run: sudo npm install -g newman
 
       - name: Run system tests
-        run: newman run tests/Mq3CatFact.postman_collection.json
+        run: newman run C:\WISS-Projekt\SpringBoot_ArgoCD\tests
 
       - name: Wait for ArgoCD deployment
         run: |
