@@ -75,6 +75,17 @@ jobs:
           git commit --allow-empty -m "Deploy ${{ env.PROJECT_VERSION }} to staging"
           git push
 
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 20.12.2
+
+      - name: Install Newman
+        run: sudo npm install -g newman
+
+      - name: Run system tests
+        run: newman run tests/Mq3CatFact.postman_collection.json
+
       - name: Wait for ArgoCD deployment
         run: |
           # Add commands to check the status of ArgoCD deployment here
