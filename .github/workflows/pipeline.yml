@@ -132,6 +132,23 @@ jobs:
           pr_body: "A new version of the application has been prepared for deployment to production. Please review and approve this pull request."
           github_token: ${{ secrets.REPOSITORY_ACCESS_TOKEN }}
 
+      - name: Create Pull Request
+        id: create_pr
+        uses: actions/github-script@v4
+        with:
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            script: |
+              const github = context.github;
+              const { data: pr } = await github.pulls.create({
+                owner: 'owner',
+                repo: 'repository',
+                title: 'Title of the Pull Request',
+                head: 'feature-branch', // Branch, von dem der Pull Request erstellt wird
+                base: 'main', // Zielbranch, in den der Pull Request gemerged werden soll
+                body: 'Description of the changes included in the Pull Request',
+              });
+              console.log(`Created Pull Request: ${pr.html_url}`);
+
       - name: Install Node.js
         uses: actions/setup-node@v2
         with:
