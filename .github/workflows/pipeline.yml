@@ -80,11 +80,6 @@ jobs:
         with:
           node-version: 20.12.2
 
-      - name: Install Newman
-        run: sudo npm install -g newman
-
-      - name: Run system tests
-        run: newman run Mq3CatFactpostmancollection.json
 
       - name: Wait for ArgoCD deployment
         run: |
@@ -95,6 +90,8 @@ jobs:
 
       - name: Run system tests
         run: |
+          npm install -g newman
+          newman run https://github.com/Skunkerle/SpringBoot_ArgoCD/blob/46c826bbe244d5060513f1eb2648a2846ab384a1/src/test/system/Mq3CatFactpostmancollection.json
           # Add the execution of further tests here 
           # You may use Newman for system testing
           # Example:
