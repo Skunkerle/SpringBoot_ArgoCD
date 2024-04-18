@@ -40,6 +40,11 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 21
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run Newman tests
+        run: newman run src/test/system/Mq3postmancollection.json
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -67,13 +72,35 @@ jobs:
         run: |
           sed -i "s/tag: .*/tag: ${{ env.PROJECT_VERSION }}/" values_staging.yml
 
-      - name: Commit and push changes to GitOps repository
+      - name: Commit changes
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"
           git add values_staging.yml
-          git commit --allow-empty -m "Deploy ${{ env.PROJECT_VERSION }} to staging"
-          git push
+          git commit --allow-empty -m "Preparing to deploy $version to production"
+
+
+      - name: Push changes to a new branch
+        run: |
+          git checkout -b deployment/${GITHUB_RUN_ID}
+          git push -u origin deployment/${GITHUB_RUN_ID}
+
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          title: "Deploy ${{ env.PROJECT_VERSION }} to staging"
+          body: "A new version of the application has been prepared for deployment to staging. Please review and approve this pull request."
+          labels: production
+          base: main
+          head: deployment/${GITHUB_RUN_ID}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 20.12.2
+
 
       - name: Wait for ArgoCD deployment
         run: |
@@ -84,31 +111,51 @@ jobs:
 
       - name: Run system tests
         run: |
+          npm install -g newman
+          newman run https://github.com/Skunkerle/SpringBoot_ArgoCD/blob/9a17e9b167c5096f71c246f4b2df74380be3306d/src/test/system/Mq3postmancollection.json
           # Add the execution of further tests here 
           # You may use Newman for system testing
           # Example:
           # newman run collection.json -e environment.json
 
+
   deploy-to-production:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
+      runs-on: ubuntu-latest
+      if: github.ref == 'refs/heads/main'
+      steps:
+
       - name: Checkout GitOps repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
-          repository: ${{ github.actor }}/ArgoCD_GitOps
-          token: ${{ secrets.REPOSITORY_ACCESS_TOKEN }}
-          ref: main
+                repository: ${{ github.actor }}/ArgoCD_GitOps
+                token: ${{ secrets.REPOSITORY_ACCESS_TOKEN }}
+                ref: main
+
 
       - name: Update image tag with version from staging in production values.yml
         run: |
-          version=$(grep 'tag:' values_staging.yml | awk '{print $2}')
-          sed -i "s/tag: .*/tag: $version/" values_production.yml
+                version=$(grep 'tag:' values_staging.yml | awk '{print $2}')
+                sed -i "s/tag: .*/tag: $version/" values_production.yml
 
-      - name: Commit and push changes to GitOps repository
+
+      - name: Commit changes
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"
           git add values_production.yml
-          git commit --allow-empty -m "Deploy $version to production"
-          git push
+          git commit --allow-empty -m "Preparing to deploy $version to production"
+
+      - name: Push changes to a new branch
+        run: |
+          git checkout -b deployment/${GITHUB_RUN_ID}
+          git push -u origin deployment/${GITHUB_RUN_ID}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          title: "Deploy ${{ env.PROJECT_VERSION }} to staging"
+          body: "A new version of the application has been prepared for deployment to staging. Please review and approve this pull request."
+          labels: production
+          base: main
+          head: deployment/${GITHUB_RUN_ID}
+          token: ${{ secrets.GITHUB_TOKEN }}
