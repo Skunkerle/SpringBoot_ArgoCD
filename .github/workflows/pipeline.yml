@@ -67,13 +67,29 @@ jobs:
         run: |
           sed -i "s/tag: .*/tag: ${{ env.PROJECT_VERSION }}/" values_staging.yml
 
-      - name: Commit and push changes to GitOps repository
+      - name: Commit changes
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"
           git add values_staging.yml
-          git commit --allow-empty -m "Deploy ${{ env.PROJECT_VERSION }} to staging"
-          git push
+          git commit --allow-empty -m "Preparing to deploy $version to production"
+
+
+      - name: Push changes to a new branch
+        run: |
+          git checkout -b deployment/${GITHUB_RUN_ID}
+          git push -u origin deployment/${GITHUB_RUN_ID}
+
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          title: "Deploy ${{ env.PROJECT_VERSION }} to staging"
+          body: "A new version of the application has been prepared for deployment to staging. Please review and approve this pull request."
+          labels: production
+          base: main
+          head: deployment/${GITHUB_RUN_ID}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Node.js
         uses: actions/setup-node@v2
@@ -119,51 +135,22 @@ jobs:
 
       - name: Commit changes
         run: |
-                git config --global user.email "github-actions@github.com"
-                git config --global user.name "github-actions"
-                git add values_production.yml
-                git commit --allow-empty -m "Preparing to deploy $version to production"
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
+          git add values_production.yml
+          git commit --allow-empty -m "Preparing to deploy $version to production"
 
-
-      - name: Push to new branch
+      - name: Push changes to a new branch
         run: |
-                git branch -M production-deploy-$GITHUB_RUN_ID
-                git push -u origin production-deploy-$GITHUB_RUN_ID
-
-
-      - name: Create Pull Request
-        uses: repo-sync/pull-request@v2
-        with:
-          source_branch: "production-deploy-$GITHUB_RUN_ID"
-          destination_branch: "main"
-          pr_title: "Deploy $version to production"
-          pr_body: "A new version of the application has been prepared for deployment to production. Please review and approve this pull request."
-          github_token: ${{ secrets.REPOSITORY_ACCESS_TOKEN }}
+          git checkout -b deployment/${GITHUB_RUN_ID}
+          git push -u origin deployment/${GITHUB_RUN_ID}
 
       - name: Create Pull Request
-        id: create_pr
-        uses: actions/github-script@v4
+        uses: peter-evans/create-pull-request@v3
         with:
-            github-token: ${{ secrets.GITHUB_TOKEN }}
-            script: |
-              const github = context.github;
-              const { data: pr } = await github.pulls.create({
-                owner: 'owner',
-                repo: 'repository',
-                title: 'Title of the Pull Request',
-                head: 'feature-branch', // Branch, von dem der Pull Request erstellt wird
-                base: 'main', // Zielbranch, in den der Pull Request gemerged werden soll
-                body: 'Description of the changes included in the Pull Request',
-              });
-              console.log(`Created Pull Request: ${pr.html_url}`);
-
-      - name: Install Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: 14
-
-      - name: Install Newman
-        run: sudo npm install -g newman
-
-      - name: Run system tests
-        run: newman run tests/system/your-test-file.json
+          title: "Deploy ${{ env.PROJECT_VERSION }} to staging"
+          body: "A new version of the application has been prepared for deployment to staging. Please review and approve this pull request."
+          labels: production
+          base: main
+          head: deployment/${GITHUB_RUN_ID}
+          token: ${{ secrets.GITHUB_TOKEN }}
